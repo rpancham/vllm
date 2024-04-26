@@ -219,27 +219,6 @@ WORKDIR /usr/src/flash-attention-v2
 RUN pip --verbose wheel flash-attn==${FLASH_ATTN_VERSION} \
     --no-build-isolation --no-deps --no-cache-dir
 
-
-## Test ########################################################################
-FROM dev AS test
-
-WORKDIR /vllm-workspace
-# ADD is used to preserve directory structure
-# NB: Could leak secrets from local context, the test image should not be pushed
-# to a registry
-ADD . /vllm-workspace/
-# copy pytorch extensions separately to avoid having to rebuild
-# when python code changes
-COPY --from=build /workspace/vllm/*.so /vllm-workspace/vllm/
-# Install flash attention (from pre-built wheel)
-RUN --mount=type=bind,from=flash-attn-builder,src=/usr/src/flash-attention-v2,target=/usr/src/flash-attention-v2 \
-    pip install /usr/src/flash-attention-v2/*.whl --no-cache-dir
-# ignore build dependencies installation because we are using pre-complied extensions
-RUN rm pyproject.toml
-RUN --mount=type=cache,target=/root/.cache/pip \
-    VLLM_USE_PRECOMPILED=1 pip install . --verbose
-
-
 ## Proto Compilation ###########################################################
 FROM python-base AS gen-protos
 
