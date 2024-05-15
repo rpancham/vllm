@@ -250,6 +250,16 @@ RUN --mount=type=bind,from=build,src=/workspace/dist,target=/workspace/dist \
     --mount=type=cache,target=/root/.cache/pip \
     pip install dist/*.whl --verbose
 
+# vllm requires a specific nccl version built from source distribution
+# See https://github.com/NVIDIA/nccl/issues/1234
+RUN pip install \
+        -v \
+        --force-reinstall \
+        --no-binary="all" \
+        --no-cache-dir \
+        "vllm-nccl-cu12==2.18.1.0.4.0" && \
+    mv /root/.config/vllm/nccl/cu12/libnccl.so.2.18.1 /opt/vllm/
+
 # Install flash attention (from pre-built wheel)
 RUN --mount=type=bind,from=flash-attn-builder,src=/usr/src/flash-attention-v2,target=/usr/src/flash-attention-v2 \
     pip install /usr/src/flash-attention-v2/*.whl --no-cache-dir
@@ -267,7 +277,7 @@ ENV HF_HUB_OFFLINE=1 \
     PORT=8000 \
     GRPC_PORT=8033 \
     HOME=/home/vllm \
-    VLLM_NCCL_SO_PATH=/opt/vllm/lib/python3.11/site-packages/nvidia/nccl/lib/libnccl.so.2 \
+    VLLM_NCCL_SO_PATH=/opt/vllm/libnccl.so.2.18.1 \
     VLLM_USAGE_SOURCE=production-docker-image
 
 # setup non-root user for OpenShift
