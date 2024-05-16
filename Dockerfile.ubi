@@ -206,7 +206,7 @@ COPY --from=gen-protos /workspace/vllm/entrypoints/grpc/pb vllm/entrypoints/grpc
 ENV CCACHE_DIR=/root/.cache/ccache
 RUN --mount=type=cache,target=/root/.cache/ccache \
     --mount=type=cache,target=/root/.cache/pip \
-    python setup.py bdist_wheel --dist-dir=dist
+    VLLM_USE_PRECOMPILED=1 python3 setup.py bdist_wheel --dist-dir=dist
 
 #################### FLASH_ATTENTION Build IMAGE ####################
 FROM dev as flash-attn-builder
@@ -258,7 +258,7 @@ RUN pip install \
         --no-binary="all" \
         --no-cache-dir \
         "vllm-nccl-cu12==2.18.1.0.4.0" && \
-    mv /root/.config/vllm/nccl/cu12/libnccl.so.2.18.1 /opt/vllm/
+    mv /root/.config/vllm/nccl/cu12/libnccl.so.2.18.1 /opt/vllm/lib/
 
 # Install flash attention (from pre-built wheel)
 RUN --mount=type=bind,from=flash-attn-builder,src=/usr/src/flash-attention-v2,target=/usr/src/flash-attention-v2 \
@@ -277,7 +277,7 @@ ENV HF_HUB_OFFLINE=1 \
     PORT=8000 \
     GRPC_PORT=8033 \
     HOME=/home/vllm \
-    VLLM_NCCL_SO_PATH=/opt/vllm/libnccl.so.2.18.1 \
+    VLLM_NCCL_SO_PATH=/opt/vllm/lib/libnccl.so.2.18.1 \
     VLLM_USAGE_SOURCE=production-docker-image
 
 # setup non-root user for OpenShift
