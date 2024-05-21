@@ -23,7 +23,7 @@ ENV LANG=C.UTF-8 \
 
 # Some utils for dev purposes - tar required for kubectl cp
 RUN microdnf install -y \
-        which procps findutils tar vim \
+        which procps findutils tar vim  git\
     && microdnf clean all
 
 
