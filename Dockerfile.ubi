@@ -5,7 +5,6 @@
 ARG BASE_UBI_IMAGE_TAG=9.4
 ARG PYTHON_VERSION=3.11
 
-# NOTE: This setting only has an effect when not using prebuilt-wheel kernels
 ARG TORCH_CUDA_ARCH_LIST="7.0 7.5 8.0 8.6 8.9 9.0+PTX"
 
 
@@ -136,24 +135,6 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=bind,source=proto,target=proto \
     make gen-protos
 
-## Extension Cache #############################################################
-# Instead of compiling artifacts every build just copy from pre-built wheel
-# This might not work if the PyTorch and CUDA versions don't match!
-FROM base as prebuilt-wheel
-
-RUN microdnf install -y \
-        unzip \
-    && microdnf clean all
-
-ARG PYTHON_VERSION
-# 0.4.2 is built for CUDA 12.1 and PyTorch 2.3.0
-ARG VLLM_WHEEL_VERSION=0.4.2
-
-RUN curl -Lo vllm.whl https://github.com/vllm-project/vllm/releases/download/v${VLLM_WHEEL_VERSION}/vllm-${VLLM_WHEEL_VERSION}-cp${PYTHON_VERSION//.}-cp${PYTHON_VERSION//.}-manylinux1_x86_64.whl \
-    && unzip vllm.whl \
-    && rm vllm.whl
-# compiled extensions located at /workspace/vllm/*.so
-
 ## Builder #####################################################################
 FROM dev AS build
 
@@ -194,10 +175,6 @@ ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 # Copy the entire directory before building wheel
 COPY vllm vllm
 
-# Comment if building *.so files from scratch
-##################################################
-# Copy the prebuilt *.so files
-COPY --from=prebuilt-wheel /workspace/vllm/*.so /workspace/vllm/
 ##################################################
 
 # Copy over the generated *.pb2 files
@@ -206,7 +183,7 @@ COPY --from=gen-protos /workspace/vllm/entrypoints/grpc/pb vllm/entrypoints/grpc
 ENV CCACHE_DIR=/root/.cache/ccache
 RUN --mount=type=cache,target=/root/.cache/ccache \
     --mount=type=cache,target=/root/.cache/pip \
-    VLLM_USE_PRECOMPILED=1 python3 setup.py bdist_wheel --dist-dir=dist
+    CMAKE_BUILD_TYPE=Release python3 setup.py bdist_wheel --dist-dir=dist
 
 #################### FLASH_ATTENTION Build IMAGE ####################
 FROM dev as flash-attn-builder
