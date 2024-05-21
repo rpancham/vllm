@@ -240,10 +240,6 @@ RUN pip install \
     mv /root/.config/vllm/nccl/cu12/libnccl.so.2.18.1 /opt/vllm/lib/ && \
     chmod 0755 /opt/vllm/lib/libnccl.so.2.18.1
 
-# Install flash attention (from pre-built wheel)
-RUN --mount=type=bind,from=flash-attn-builder,src=/usr/src/flash-attention-v2,target=/usr/src/flash-attention-v2 \
-    pip install /usr/src/flash-attention-v2/*.whl --no-cache-dir
-
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install \
         # additional dependencies for the TGIS gRPC server
