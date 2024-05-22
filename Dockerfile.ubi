@@ -185,27 +185,6 @@ RUN --mount=type=cache,target=/root/.cache/ccache \
     --mount=type=cache,target=/root/.cache/pip \
     CMAKE_BUILD_TYPE=Release python3 setup.py bdist_wheel --dist-dir=dist
 
-#################### FLASH_ATTENTION Build IMAGE ####################
-FROM dev as flash-attn-builder
-ENV VIRTUAL_ENV=/opt/vllm/bin
-ENV PATH=${VIRTUAL_ENV}/bin:$PATH
-
-RUN microdnf install -y git \
-    && microdnf clean all
-
-# max jobs used for build
-ARG max_jobs=2
-ENV MAX_JOBS=${max_jobs}
-# flash attention version
-ARG flash_attn_version=v2.5.8
-ENV FLASH_ATTN_VERSION=${flash_attn_version}
-
-WORKDIR /usr/src/flash-attention-v2
-
-# Download the wheel or build it if a pre-compiled release doesn't exist
-RUN pip --verbose wheel flash-attn==${FLASH_ATTN_VERSION} \
-    --no-build-isolation --no-deps --no-cache-dir
-
 ## Release #####################################################################
 # Note from the non-UBI Dockerfile:
 # We used base cuda image because pytorch installs its own cuda libraries.
@@ -235,11 +214,8 @@ RUN pip install \
         --no-binary="all" \
         --no-cache-dir \
         "vllm-nccl-cu12==2.18.1.0.4.0" && \
-    mv /root/.config/vllm/nccl/cu12/libnccl.so.2.18.1 /opt/vllm/lib/
-
-# Install flash attention (from pre-built wheel)
-RUN --mount=type=bind,from=flash-attn-builder,src=/usr/src/flash-attention-v2,target=/usr/src/flash-attention-v2 \
-    pip install /usr/src/flash-attention-v2/*.whl --no-cache-dir
+    mv /root/.config/vllm/nccl/cu12/libnccl.so.2.18.1 /opt/vllm/lib/ && \
+    chmod 0755 /opt/vllm/lib/libnccl.so.2.18.1
 
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install \
@@ -255,7 +231,8 @@ ENV HF_HUB_OFFLINE=1 \
     GRPC_PORT=8033 \
     HOME=/home/vllm \
     VLLM_NCCL_SO_PATH=/opt/vllm/lib/libnccl.so.2.18.1 \
-    VLLM_USAGE_SOURCE=production-docker-image
+    VLLM_USAGE_SOURCE=production-docker-image \
+    VLLM_WORKER_MULTIPROC_METHOD=fork
 
 # setup non-root user for OpenShift
 RUN microdnf install -y shadow-utils \
