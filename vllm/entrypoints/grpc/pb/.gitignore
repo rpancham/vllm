@@ -1,4 +1,0 @@
-*.py
-*.py-e
-*.pyi
-!__init__.py
