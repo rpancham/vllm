@@ -4,3 +4,4 @@
 # Dependencies for AMD GPUs
 ray >= 2.10.0
 pytest-asyncio
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
